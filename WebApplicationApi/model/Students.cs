@@ -1,38 +1,27 @@
 ﻿namespace WebApplication1.model
 {
-    public class Students
+
+    public partial class Students
     {
+
+        // This contains the Student's Personal information.
         public int Id { get; set; }
         public string? Name { get; set; }
         public int Age { get; set; }
         public int Grad { get; set; }
 
-        public Students(int id,string name,int age,int Grad)
-        {
-            this.Id = id;
-            this.Name = name;
-            this.Age = age;
-            this.Grad = Grad;
-        }
 
-        public bool IsValid()
-        {
-            if
-            (
-                   this.Id == 0 
-                || !string.IsNullOrEmpty(this.Name)
-                || this.Age > 0
-                || this.Grad > 0
-            ) return true;
-            else return false;
-        }
+        // This contains the Student's credential information.
+        public string? Email { get; set; }
+        public string? HashPassword { get; set; }
+        public Roles.Role Role { get; set; }
 
-        public void ConvertTo(Students student)
-        {
-            this.Name = student.Name;
-            this.Age = student.Age;
-            this.Grad = student.Grad;
-        }
+
+        // Contains the student's authentication information.
+        public string? RefreshTokenHash { get; set; }
+        public DateTime? RefreshTokenExpiresAt { get; set; }
+        public DateTime? RefreshTokenRevokedAt { get; set; }
 
     }
+
 }
