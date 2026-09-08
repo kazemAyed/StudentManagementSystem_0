@@ -1,9 +1,16 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using WebApplication1.DataSimulation;
 using WebApplication1.model;
@@ -13,55 +20,104 @@ namespace WebApplication1.Controllers
     /// <summary>
     /// All the function relative with the Get .
     /// </summary>
+    [Authorize]
     [Route("api/StudentsController", Name = "StudentsController")]
     [ApiController]
     public partial class StudentsController : ControllerBase
     {
-
-        private static List<Students> AllDataStudents = WebApplication1.DataSimulation.clsDataSimulation.Students;
-
+        [ProducesResponseType(typeof(Students), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize]
         [HttpGet("GetStudentInfoByID", Name = "GetStudentInfoByID")]
-        public ActionResult<Students> GetStudentInfoByID(int? id)
+        public ActionResult<Students> GetStudentInfoByID(int Id)
         {
+            if (!ValidToken())
+                return Unauthorized();
 
-            if (id is null || id <= 0) return BadRequest();
+            var studentId = User.FindFirst("sub")?.Value;
 
-            var student = AllDataStudents.FirstOrDefault(student => student.Id == id);
-            
-            if(student is null) return NoContent();
-            else return Ok(student);
+            if (string.IsNullOrEmpty(studentId))
+                return Unauthorized();
 
+            if (!int.TryParse(studentId, out int id))
+                return Unauthorized();
+
+            if (Id <= 0)
+                return BadRequest("Invalid student ID.");
+
+            var student = AllDataStudents
+                .FirstOrDefault(student => student.Id == Id);
+
+            if (student is null)
+                return NotFound();
+
+            // Admin can see any student.
+            // Normal students can only see themselves.
+            if (!User.IsInRole("ADMIN") && id != Id)
+                return Forbid();
+
+            return Ok(student);
         }
 
+
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetStudentByAgeFromTo", Name = "GetStudentByAgeFromTo")]
         public ActionResult<IEnumerable<Students>> GetStudentByAgeFromTo(int from, int to)
         {
-            var students = AllDataStudents.Where(student => student.Age >= from && student.Age <= to);
-            if (students is null) return NoContent();
-            else return Ok(students);
+
+            if (!ValidToken()) return Unauthorized();
+
+            if (from < 0 || to < 0 || from > to)
+                return BadRequest("Invalid age range.");
+
+            var students = AllDataStudents
+                .Where(student => student.Age >= from && student.Age <= to)
+                .ToList();
+
+            if (students.Count == 0)
+                return NoContent();
+
+            return Ok(students);
         }
 
+
+
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetAllStudents", Name = "GetAllStudents")]
-        public object? GetAllStudents()
+        public ActionResult<List<Students>> GetAllStudents()
         {
-            if (StudentsController.AllDataStudents is null || StudentsController.AllDataStudents.Count <= 0)
-                return this.NoContent();
-            else
-                return this.Ok(AllDataStudents); 
+
+            if (!ValidToken()) return Unauthorized();
+
+            if (AllDataStudents is null || AllDataStudents.Count == 0)
+            {
+                return NoContent();
+            }
+
+            return Ok(AllDataStudents);
+
         }
 
+
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetPassStudrnts", Name = "GetPassStudrnts")]
         public ActionResult<IEnumerable<Students>> GetPassStudrnts()
         {
+            if (!ValidToken()) return Unauthorized();
+
             var PassStudents = AllDataStudents.Where(student => student.Grad >= 50);
             if (PassStudents is null || PassStudents.ToList().Count <= 0)
                 return this.NoContent();
@@ -69,11 +125,16 @@ namespace WebApplication1.Controllers
                 return this.Ok(PassStudents);
         }
 
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetAllFailuresStudents", Name = "GetAllFailuresStudents")]
         public ActionResult<IEnumerable<Students>> GetAllFailuresStudents()
         {
+
+            if (!ValidToken()) return Unauthorized();
+
             var FailuresStudents = AllDataStudents.Where(stuedent => stuedent.Grad < 50);
             if (FailuresStudents is null || FailuresStudents.ToList().Count <= 0)
                 return this.NoContent();
@@ -82,11 +143,15 @@ namespace WebApplication1.Controllers
         }
 
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetStudentsHowHaveGraterThanTheGrade", Name = "GetStudentsHowHaveGraterThanTheGrade")]
         public ActionResult<IEnumerable<Students>> GetStudentsHowHaveGraterThanTheGrade(int? grade)
         {
+
+            if (!ValidToken()) return Unauthorized();
 
             if (grade is null || grade <= 0) return this.BadRequest();
 
@@ -98,11 +163,15 @@ namespace WebApplication1.Controllers
         }
 
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetStudentsHowHaveLessThanTheGrade", Name = "GetStudentsHowHaveLessThanTheGrade")]
         public ActionResult<IEnumerable<Students>> GetStudentsHowHaveLessThanTheGrade(int? grade)
         {
+
+            if (!ValidToken()) return Unauthorized();
 
             if (grade is null || grade <= 0) return this.BadRequest();
 
@@ -114,11 +183,18 @@ namespace WebApplication1.Controllers
         }
 
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetStudentsHowHaveGradeFromTo", Name = "GetStudentsHowHaveGradeFromTo")]
-        public ActionResult<IEnumerable<Students>> GetStudentsHowHaveGradeFromTo(int? FromLessGrade, int? ToGrateGrade)
+        public ActionResult<IEnumerable<Students>> 
+            GetStudentsHowHaveGradeFromTo(
+            int? FromLessGrade, 
+            int? ToGrateGrade)
         {
+
+            if (!ValidToken()) return Unauthorized();
 
             if (FromLessGrade is null || FromLessGrade <= 0) return BadRequest();
             if (ToGrateGrade is null || ToGrateGrade <= 0) return BadRequest();
@@ -131,31 +207,87 @@ namespace WebApplication1.Controllers
         }
 
 
+        [ProducesResponseType(typeof(List<Students>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Authorize(Roles = "ADMIN")]
         [HttpGet("GetAvgGradeForAllStudents", Name = "GetAvgGradeForAllStudents")]
         public ActionResult<double> GetAvgGradeForAllStudents()
         {
+            if (!ValidToken()) return BadRequest();
             if (AllDataStudents is null) return this.NoContent();
             else return this.Ok(AllDataStudents.Select(student => student.Grad).Average());
         }
 
 
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(Students), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [Authorize]
         [HttpGet("GetStudentByID", Name = "GetStudentByID")]
-        public ActionResult<Students> GetStudentByID(int? Id)
+        public ActionResult<Students> GetStudentByID(int Id)
         {
+            if (!ValidToken())
+                return Unauthorized();
 
-            if (Id is null ||Id <= 0) return this.BadRequest("Not found the negtiv id");
+            var studentId = User.FindFirst("sub")?.Value;
 
-            var student = AllDataStudents.FirstOrDefault(student => student.Id == Id);
+            if (string.IsNullOrEmpty(studentId))
+                return Unauthorized();
 
-            if (student is null) return this.NotFound("this is not Found!");
+            if (!int.TryParse(studentId, out int id))
+                return Unauthorized();
 
-            else return this.Ok(student);
+            if (Id <= 0)
+                return BadRequest("Invalid student ID.");
 
+            var student = AllDataStudents
+                .FirstOrDefault(student => student.Id == Id);
+
+            if (student is null)
+                return NotFound("Student not found.");
+
+            // Admin can access any student.
+            if (User.IsInRole("ADMIN"))
+                return Ok(student);
+
+            // Normal student can only access their own record.
+            if (student.Id == id)
+                return Ok(student);
+
+            return Forbid();
+        }
+
+
+        [ProducesResponseType(typeof(Students), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [EnableRateLimiting("api")]
+        [Authorize]
+        [HttpGet("me", Name = "GetMyInfo")]
+        public ActionResult<Students> GetMyInfo()
+        {
+            if (!ValidToken())
+                return Unauthorized();
+
+            var studentId = User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(studentId))
+                return Unauthorized();
+
+            if (!int.TryParse(studentId, out int id))
+                return BadRequest();
+
+            var me = AllDataStudents
+                .FirstOrDefault(student => student.Id == id);
+
+            if (me is null)
+                return NotFound();
+
+            return Ok(me);
         }
 
     }
@@ -169,10 +301,14 @@ namespace WebApplication1.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [Authorize(Roles = "ADMIN")]
         [HttpPost("AddNewStudent", Name = "AddNewStudent")]
         public ActionResult<Students> AddNewStudent(Students newStudent)
         {
+
+            if (!ValidToken()) return Unauthorized();
 
             // this is the bad request option .
             if
@@ -206,10 +342,15 @@ namespace WebApplication1.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [Authorize(Roles = "ADMIN")]
         [HttpDelete("DeleteStudentById",Name= "DeleteStudentById")]
         public ActionResult? DeleteStudentById(int? id)
         {
+
+            if(!ValidToken()) return Unauthorized();
+
             if (id is null || id <= 0) return BadRequest();
             if (!AllDataStudents.Any(student => student.Id == id)) return NotFound();
             else 
@@ -231,10 +372,14 @@ namespace WebApplication1.Controllers
 
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [Authorize(Roles = "ADMIN")]
         [HttpPut("UpdateStudent", Name = "UpdateStudent")]
         public ActionResult UpdateStudent(Students NewStudent)
         {
+
+            if (!ValidToken()) return Unauthorized();
 
             if (AllDataStudents is null) return NotFound();
             if (!NewStudent.IsValid()) return BadRequest();
@@ -247,6 +392,54 @@ namespace WebApplication1.Controllers
                 OldStudent.ConvertTo(NewStudent);
                 return Ok();
             }
+
+        }
+
+    }
+
+
+    /// <summary>
+    /// Utility functions required for use within the StudentController.
+    /// </summary>
+    public partial class StudentsController
+    {
+
+        private static List<Students> AllDataStudents =
+            WebApplication1.DataSimulation.clsDataSimulation.Students
+                .Select(student => new Students
+                {
+                    Id = student.Id,
+                    Name = student.Name,
+                    Age = student.Age,
+                    Email = student.Email,
+                    Grad = student.Grad
+                }).ToList();
+
+
+        private readonly IConfiguration _configuration;
+
+        public StudentsController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        private bool ValidToken()
+        {
+
+            string? studentId = User.FindFirst("sub")?.Value;
+            string? studentEmail = User.FindFirst("email")?.Value;
+
+            if (studentId is null || studentEmail is null)
+                return false;
+
+            var student =
+                DataSimulation.clsDataSimulation.Students
+                .FirstOrDefault(student =>
+                    student.Id.ToString() == studentId &&
+                    student.Email == studentEmail);
+
+            if (student is null) return false;
+            else return student.RefreshTokenRevokedAt is null;
 
         }
 
