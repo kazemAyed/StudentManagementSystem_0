@@ -1,4 +1,5 @@
 ﻿using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
@@ -55,15 +56,15 @@ namespace ConsoleApp_ClintTest_0.Students
                 string url = @"https://localhost:7079/api/StudentsController/AddNewStudent";
                 string jsonFileAsBodyContant = JsonSerializer.Serialize(newStudent);
 
-                using HttpClient client = new HttpClient();
                 HttpContent content = new StringContent(jsonFileAsBodyContant, Encoding.UTF8, "application/json");
-                HttpResponseMessage ResponseMessage = await client.PostAsync(url, content);
+                HttpResponseMessage ResponseMessage = await Students.StudentClient!.PostAsync(url, content);
 
                 return ResponseMessage.StatusCode == System.Net.HttpStatusCode.Created;
 
             }
 
         }
+
 
     }
 

@@ -301,6 +301,7 @@ namespace WebApplication1.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [Authorize(Roles = "ADMIN")]
@@ -343,6 +344,7 @@ namespace WebApplication1.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [Authorize(Roles = "ADMIN")]
         [HttpDelete("DeleteStudentById",Name= "DeleteStudentById")]
@@ -373,6 +375,7 @@ namespace WebApplication1.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [Authorize(Roles = "ADMIN")]
         [HttpPut("UpdateStudent", Name = "UpdateStudent")]
@@ -404,17 +407,19 @@ namespace WebApplication1.Controllers
     public partial class StudentsController
     {
 
-        private static List<Students> AllDataStudents =
-            WebApplication1.DataSimulation.clsDataSimulation.Students
-                .Select(student => new Students
-                {
-                    Id = student.Id,
-                    Name = student.Name,
-                    Age = student.Age,
-                    Email = student.Email,
-                    Grad = student.Grad
-                }).ToList();
+        //private static List<Students> AllDataStudents =
+        //    WebApplication1.DataSimulation.clsDataSimulation.Students
+        //        .Select(student => new Students
+        //        {
+        //            Id = student.Id,
+        //            Name = student.Name,
+        //            Age = student.Age,
+        //            Email = student.Email,
+        //            Grad = student.Grad
+        //        }).ToList();
 
+        private static List<Students> AllDataStudents =
+          WebApplication1.DataSimulation.clsDataSimulation.Students;
 
         private readonly IConfiguration _configuration;
 

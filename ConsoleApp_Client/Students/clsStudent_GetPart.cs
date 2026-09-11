@@ -5,8 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using static System.Net.WebRequestMethods;
 
@@ -17,15 +19,30 @@ namespace ConsoleApp_ClintTest_0.Students
     /// </summary>
     public partial class Students
     {
+
        
+
+        internal static async Task<bool> GetMyInformation(string url)
+        {
+
+            if (!clsUtility.IsValidUrl(url))
+                return false;
+
+            var result = await Students.StudentClient!.GetFromJsonAsync<Students>(url);
+
+            if (result is null) return false;
+
+            PrintStudent(result);
+            return true;
+
+        }
+
         public static async Task<bool> GetAll(string url)
         {
             if (!clsUtility.IsValidUrl(url))
                 return false;
 
-            using var client = new HttpClient();
-
-            var result = await client.GetFromJsonAsync<List<Students>>(url);
+            var result = await Students.StudentClient!.GetFromJsonAsync<List<Students>>(url);
 
             if (result is null) return false;
 
@@ -64,7 +81,7 @@ namespace ConsoleApp_ClintTest_0.Students
 
             Console.ResetColor();
             Console.WriteLine();
-
+            
             // ==============================
             // Empty list
             // ==============================
@@ -132,93 +149,68 @@ namespace ConsoleApp_ClintTest_0.Students
             Console.ReadKey();
         }
 
-
-
         public static async Task GetPassStudent(string url)
         {
 
             if (string.IsNullOrEmpty(url)) return;
 
-            using (var client = new HttpClient())
-            {
-                string JsonFile = await client.GetStringAsync(url);
+            string JsonFile = await Students.StudentClient!.GetStringAsync(url);
 
-                List<Students>? students = JsonSerializer.Deserialize<List<Students>>(JsonFile);
+            List<Students>? students = JsonSerializer.Deserialize<List<Students>>(JsonFile);
 
-                PrintAllStudents(students);
-
-            }
+            PrintAllStudents(students);
 
         }
 
         public static async Task GetAllFailuresStudents(string url)
         {
-            using (var client = new HttpClient())
-            {
-                string jsonFile = await client.GetStringAsync(url);
-                List<Students>? students = (List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>));
-                if(students != null) PrintAllStudents(students);
-            }
+            string jsonFile = await Students.StudentClient!.GetStringAsync(url);
+            List<Students>? students = (List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>));
+            if (students != null) PrintAllStudents(students);
         }
 
         public static async Task GetStudentsHowHaveGraterThanTheGrade(int Grade)
         {
-            using (var clint = new HttpClient())
-            {
-                string url = @"https://localhost:7079/api/StudentsController/GetStudentsHowHaveGraterThanTheGrade?grade=" + Grade;
-                string jsonFile = await clint.GetStringAsync(url);
-                List<Students>? students = ((List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>)));
-                if (students != null) PrintAllStudents(students);
-            }
+            string url = @"https://localhost:7079/api/StudentsController/GetStudentsHowHaveGraterThanTheGrade?grade=" + Grade;
+            string jsonFile = await Students.StudentClient!.GetStringAsync(url);
+            List<Students>? students = ((List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>)));
+            if (students != null) PrintAllStudents(students);
         }
 
         public static async Task GetStudentsHowHaveLessThanTheGrade(int Grade)
         {
-            using (var clint = new HttpClient())
-            {
-                string url = @"https://localhost:7079/api/StudentsController/GetStudentsHowHaveLessThanTheGrade?grade=" + Grade;
-                string jsonFile = await clint.GetStringAsync(url);
-                List<Students>? students = ((List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>)));
-                if (students != null) PrintAllStudents(students);
-            }
+            string url = @"https://localhost:7079/api/StudentsController/GetStudentsHowHaveLessThanTheGrade?grade=" + Grade;
+            string jsonFile = await Students.StudentClient!.GetStringAsync(url);
+            List<Students>? students = ((List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>)));
+            if (students != null) PrintAllStudents(students);
         }
 
         public static async Task GetStudentsHowHaveGradeFromTo(int FromLessGrade, int ToGrateGrade)
         {
-            using (var client = new HttpClient())
-            {
-                string url = $@"https://localhost:7079/api/StudentsController/GetStudentsHowHaveGradeFromTo?FromLessGrade={FromLessGrade}&ToGrateGrade={ToGrateGrade}";
-                string jsonFile = await client.GetStringAsync(url);
-                List<Students>? students = (List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>));
-                if (students != null) PrintAllStudents(students);
-            }
-
+            string url = $@"https://localhost:7079/api/StudentsController/GetStudentsHowHaveGradeFromTo?FromLessGrade={FromLessGrade}&ToGrateGrade={ToGrateGrade}";
+            string jsonFile = await Students.StudentClient!.GetStringAsync(url);
+            List<Students>? students = (List<Students>?)JsonSerializer.Deserialize(jsonFile, typeof(List<Students>));
+            if (students != null) PrintAllStudents(students);
         }
 
-        public static async Task<double?> GetAvgGradeForAllStudents()
+        public static async Task<(double? Average, HttpStatusCode StatusCode)> GetAvgGradeForAllStudents()
         {
-            double? returned = null;
-            using (var client = new HttpClient())
-            {
-                string url = @"https://localhost:7079/api/StudentsController/GetAvgGradeForAllStudents";
-                using (var Response = await client.GetAsync(url))
-                {
+            const string url =
+                "https://localhost:7079/api/StudentsController/GetAvgGradeForAllStudents";
 
-                    if (Response.StatusCode == System.Net.HttpStatusCode.NotFound)
-                    {
-                        returned = (double?)Response.StatusCode;
-                    }
-                    else
-                    {
-                        double AVG = Convert.ToDouble(await client.GetStringAsync(url));
-                        returned = AVG;
-                    }
-                }
-            }
+            using var response = await Students.StudentClient!.GetAsync(url);
 
-            return returned;
+            if (!response.IsSuccessStatusCode)
+                return (null, response.StatusCode);
 
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!double.TryParse(content, out double average))
+                return (null, response.StatusCode);
+
+            return (average, response.StatusCode);
         }
+
 
         public static async Task<Students?> GetStudentByID(string url)
         {
@@ -227,12 +219,9 @@ namespace ConsoleApp_ClintTest_0.Students
 
             if (!string.IsNullOrEmpty(url))
             {
-                using (HttpClient client = new HttpClient())
-                {
-                    var response = await client.GetAsync(url);
-                    if (response.StatusCode == HttpStatusCode.OK)
-                        student = await client.GetFromJsonAsync<Students>(url);
-                }
+                var response = await Students.StudentClient!.GetAsync(url);
+                if (response.StatusCode == HttpStatusCode.OK)
+                    student = await Students.StudentClient!.GetFromJsonAsync<Students>(url);
             }
 
             return student;
@@ -244,13 +233,10 @@ namespace ConsoleApp_ClintTest_0.Students
 
             Students? student = null;
 
-            using (HttpClient client = new HttpClient())
-            {
-                string url = $"https://localhost:7079/api/StudentsController/GetStudentInfoByID?id={studentID}";
-                var response = await client.GetAsync(url);
-                if (response.StatusCode == HttpStatusCode.OK)
-                    student = await client.GetFromJsonAsync<Students>(url);
-            }
+            string url = $"https://localhost:7079/api/StudentsController/GetStudentInfoByID?id={studentID}";
+            var response = await Students.StudentClient!.GetAsync(url);
+            if (response.StatusCode == HttpStatusCode.OK)
+                student = await Students.StudentClient!.GetFromJsonAsync<Students>(url);
 
             return student;
 

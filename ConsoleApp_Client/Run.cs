@@ -1,7 +1,12 @@
-﻿using ConsoleApp_ClintTest_0.Students;
+﻿using ConsoleApp_ClintTest_0.Api;
+using ConsoleApp_ClintTest_0.Services;
+using ConsoleApp_ClintTest_0.Students;
+using ConsoleClient.UI;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -59,11 +64,12 @@ namespace ConsoleApp_ClintTest_0
                     {
                         case "0":
                             {
-                                goto EndProcese;
+                                goto EndProcess;
                             }
                         case "1":
                             {
-                                string endPointFunctionAPI = ReadApiEndpoint();
+                                //string endPointFunctionAPI = ReadApiEndpoint();
+                                string endPointFunctionAPI = $"https://localhost:7079/api/StudentsController/GetAllStudents";
                                 Console.Clear();
                                 bool combletedSuccefuly = await Students.Students.GetAll(endPointFunctionAPI);
 
@@ -73,14 +79,16 @@ namespace ConsoleApp_ClintTest_0
                             break;
                         case "2":
                             {
-                                string endPointFunctionAPI = ReadApiEndpoint();
+                                //string endPointFunctionAPI = ReadApiEndpoint();
+                                string endPointFunctionAPI = $"https://localhost:7079/api/StudentsController/GetPassStudrnts";
                                 Console.Clear();
                                 await Students.Students.GetPassStudent(endPointFunctionAPI);
                             }
                             break;
                         case "3":
                             {
-                                string endPointFunctionAPI = ReadApiEndpoint();
+                                //string endPointFunctionAPI = ReadApiEndpoint();
+                                string endPointFunctionAPI = $"https://localhost:7079/api/StudentsController/GetAllFailuresStudents";
                                 Console.Clear();
                                 await Students.Students.GetAllFailuresStudents(endPointFunctionAPI);
                             }
@@ -118,27 +126,60 @@ namespace ConsoleApp_ClintTest_0
                             break;
                         case "7":
                             {
+
                                 Console.Clear();
-                                double avj = (double)await Students.Students.GetAvgGradeForAllStudents();
-                                if (avj == 404) Console.WriteLine($"is not dada exist in the seerver ! Status Code is {avj}");
-                                else Console.WriteLine("AVG Grade For All Students is : " + (avj).ToString());
+
+                                var result = await Students.Students.GetAvgGradeForAllStudents();
+
+                                if (result.StatusCode == HttpStatusCode.NotFound)
+                                {
+                                    Console.WriteLine("No students found on the server.");
+                                }
+                                else if (result.StatusCode == HttpStatusCode.Unauthorized)
+                                {
+                                    Console.WriteLine("You are not authorized.");
+                                }
+                                else if (result.Average is null)
+                                {
+                                    Console.WriteLine(
+                                        $"Could not get average. Status: {(int)result.StatusCode}"
+                                    );
+                                }
+                                else
+                                {
+                                    Console.WriteLine(
+                                        $"AVG Grade For All Students: {result.Average:F2}"
+                                    );
+                                }
+
+
                             }
                             break;
                         case "8":
                             {
                                 Console.Clear();
-                                await Students.Students.GetAll(@"https://localhost:7079/api/StudentsController/GetAllStudents");
+                                await Students.Students.GetMyInformation(@"https://localhost:7079/api/StudentsController/me");
                             }
                             break;
                         case "9":
                             {
 
-                                string endPointFunctionAPI = ReadApiEndpoint();
+                                Console.Write("Please enter student ID: ");
+
+                                if (!int.TryParse(Console.ReadLine(), out int studentId) || studentId <= 0)
+                                {
+                                    Console.WriteLine("Invalid student ID.");
+                                    return;
+                                }
+
+                                string endpoint =
+                                    $"https://localhost:7079/api/StudentsController/GetStudentByID?Id={studentId}";
+
                                 Console.Clear();
 
-                                if (clsUtility.IsValidUrl(endPointFunctionAPI))
+                                if (clsUtility.IsValidUrl(endpoint))
                                 {
-                                    Students.Students? Student = await Students.Students.GetStudentByID(endPointFunctionAPI);
+                                    Students.Students? Student = await Students.Students.GetStudentByID(endpoint);
                                     if (Student != null)
                                         Students.Students.PrintStudent(Student);
                                     else Console.WriteLine("no content!");
@@ -171,12 +212,37 @@ namespace ConsoleApp_ClintTest_0
 
                 } while (clsUtility.Again());
             }
-            
-            EndProcese:
+
+        EndProcess:
             {
-                Console.WriteLine("EndProcese");
-                return;
+                Console.Clear();
+                Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
+                Console.WriteLine("║                       END PROCESS                            ║");
+                Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+                Console.WriteLine("║  1. Back to Login Screen                                     ║");
+                Console.WriteLine("║  2. End Process                                              ║");
+                Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
+
+                Console.Write("Choose an option: ");
+                string? choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        await Program.authService!.LogoutAsync();
+                        await Program.Main(new string[0]);
+                        break;
+                    case "2":
+                        Console.WriteLine("\nProcess ended. Goodbye!");
+                        return;
+
+                    default:
+                        Console.WriteLine("\nInvalid option. Please choose 1 or 2.");
+                        Console.ReadKey();
+                        goto EndProcess;
+                }
             }
+
 
         }
 
@@ -642,7 +708,7 @@ namespace ConsoleApp_ClintTest_0
             Console.WriteLine("║  5. Get Students With Grade Less Than              ║");
             Console.WriteLine("║  6. Get Students Within Grade Range                ║");
             Console.WriteLine("║  7. Get Average Grade                              ║");
-            Console.WriteLine("║  8. Get All Students Without URL                   ║");
+            Console.WriteLine("║  8. Get My Information                             ║");
             Console.WriteLine("║  9. Get Student By ID                              ║");
 
             Console.WriteLine("║                                                    ║");

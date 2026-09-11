@@ -52,7 +52,7 @@ namespace WebApplication1.DataSimulation
                     Id = 5,
                     Name = "slwaa nazen",
                     Age = 31,
-                    Grad = 80,
+                    Grad = 45,
                     Email = "Slwaa@gmail.com",
                     HashPassword = BCrypt.Net.BCrypt.HashPassword("123"),
                     Role = Roles.Role.STUDENT
