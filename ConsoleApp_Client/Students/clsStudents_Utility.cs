@@ -7,6 +7,8 @@ namespace ConsoleApp_ClintTest_0.Students
     public partial class Students
     {
 
+        public static HttpClient? StudentClient { get; set; }
+
         public bool IsSameOrEqualThis(Students? other)
         {
             if (other != null && this != null)
@@ -27,12 +29,9 @@ namespace ConsoleApp_ClintTest_0.Students
         public static async Task<int> GetMaxIDInStudentsCollection()
         {
             int maxID = 0;
-            using (HttpClient client = new HttpClient())
-            {
-                string url = @"https://localhost:7079/api/StudentsController/GetAllStudents";
-                var listOfStudents = await client.GetFromJsonAsync<List<Students>>(url);
-                if (listOfStudents != null)maxID = listOfStudents.Select(student => student.Id).Max();
-            }
+            string url = @"https://localhost:7079/api/StudentsController/GetAllStudents";
+            var listOfStudents = await Students.StudentClient!.GetFromJsonAsync<List<Students>>(url);
+            if (listOfStudents != null) maxID = listOfStudents.Select(student => student.Id).Max();
             return maxID;
         }
 

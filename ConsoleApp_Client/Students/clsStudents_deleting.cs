@@ -15,15 +15,12 @@
             {
                 if (id <= 0) return false;
 
-                using (HttpClient client = new HttpClient())
+                string jsonFile = $@"https://localhost:7079/api/StudentsController/DeleteStudentById?id={id}";
+                HttpResponseMessage Response = await Students.StudentClient!.DeleteAsync(jsonFile);
+                if (Response != null)
                 {
-                    string jsonFile = $@"https://localhost:7079/api/StudentsController/DeleteStudentById?id={id}";
-                    HttpResponseMessage Response = await client.DeleteAsync(jsonFile);
-                    if (Response != null)
-                    {
-                        DetailsAboutTheHeader = Response.Content.Headers.Allow;
-                        return Response.StatusCode == System.Net.HttpStatusCode.OK;
-                    }
+                    DetailsAboutTheHeader = Response.Content.Headers.Allow;
+                    return Response.StatusCode == System.Net.HttpStatusCode.OK;
                 }
                 return false;
             }

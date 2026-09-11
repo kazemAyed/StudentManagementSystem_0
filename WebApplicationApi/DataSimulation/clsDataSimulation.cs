@@ -7,15 +7,66 @@ namespace WebApplication1.DataSimulation
         public static List<Students> Students = 
             new List<model.Students>
             {
-                new Students(1,"Ali",23,54),
-                new Students(8,"sousen",11,90),
-                new Students(2,"Mazen",13,90),
-                new Students(3,"Hoda",21,60),
-                new Students(4,"jasem",30,48),
-                new Students(5,"slman",18,78),
-                new Students(6,"smerah",23,80),
-                new Students(7,"sawsen",32,60),
-                new Students(9,"Noor",32,40)
+                new Students()
+                {
+                    Id = 1,
+                    Name = "Ali Jasem",
+                    Age = 23,
+                    Grad = 78,
+                    Email = "alil@gmail.com",
+                    HashPassword = BCrypt.Net.BCrypt.HashPassword("123"),
+                    Role = Roles.Role.STUDENT
+                },
+                new Students()
+                {
+                    Id = 2,
+                    Name = "sousen ramee",
+                    Age = 34,
+                    Grad = 89,
+                    Email = "sousen@gmail.com",
+                    HashPassword = BCrypt.Net.BCrypt.HashPassword("123"),
+                    Role = Roles.Role.STUDENT
+                },
+                new Students()
+                {
+                    Id = 3,
+                    Name = "Ali Slmaan",
+                    Age = 25,
+                    Grad = 90,
+                    Email = "alil@gmail.com",
+                    HashPassword = BCrypt.Net.BCrypt.HashPassword("123"),
+                    Role = Roles.Role.STUDENT
+                },
+                new Students()
+                {
+                    Id = 4,
+                    Name = "Lala monner",
+                    Age = 23,
+                    Grad = 67, 
+                    Email = "Lala@gmail.com",
+                    HashPassword = BCrypt.Net.BCrypt.HashPassword("123"),
+                    Role = Roles.Role.STUDENT
+                },
+                new Students()
+                {
+                    Id = 5,
+                    Name = "slwaa nazen",
+                    Age = 31,
+                    Grad = 45,
+                    Email = "Slwaa@gmail.com",
+                    HashPassword = BCrypt.Net.BCrypt.HashPassword("123"),
+                    Role = Roles.Role.STUDENT
+                },
+                new Students()
+                {
+                    Id = 9,
+                    Name = "sereen",
+                    Age = 23,
+                    Grad = 78,
+                    Email = "sereen@gmail.com",
+                    HashPassword = BCrypt.Net.BCrypt.HashPassword("123sfv"),
+                    Role = Roles.Role.ADMIN
+                }
             };
 
         //public List<clsStudents> Students = null;
